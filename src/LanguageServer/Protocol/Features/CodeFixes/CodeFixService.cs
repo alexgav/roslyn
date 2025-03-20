@@ -343,10 +343,22 @@ namespace Microsoft.CodeAnalysis.CodeFixes
             CancellationToken cancellationToken)
             where TDocument : TextDocument
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             var text = await document.GetValueTextAsync(cancellationToken).ConfigureAwait(false);
             var textSpan = new TextSpan(0, text.Length);
+
+            return await ApplyCodeFixesForSpecificDiagnosticIdAsync(document, textSpan, diagnosticId, severity, progressTracker, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<TDocument> ApplyCodeFixesForSpecificDiagnosticIdAsync<TDocument>(
+            TDocument document,
+            TextSpan textSpan,
+            string diagnosticId,
+            DiagnosticSeverity severity,
+            IProgress<CodeAnalysisProgress> progressTracker,
+            CancellationToken cancellationToken)
+            where TDocument : TextDocument
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
             var fixCollection = await GetDocumentFixAllForIdInSpanAsync(
                 document, textSpan, diagnosticId, severity, cancellationToken).ConfigureAwait(false);

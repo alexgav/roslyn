@@ -27,6 +27,8 @@ namespace Microsoft.CodeAnalysis.CodeFixes
         Task<CodeFixCollection?> GetDocumentFixAllForIdInSpanAsync(TextDocument document, TextSpan textSpan, string diagnosticId, DiagnosticSeverity severity, CancellationToken cancellationToken);
         Task<TDocument> ApplyCodeFixesForSpecificDiagnosticIdAsync<TDocument>(TDocument document, string diagnosticId, DiagnosticSeverity severity, IProgress<CodeAnalysisProgress> progressTracker, CancellationToken cancellationToken)
             where TDocument : TextDocument;
+        Task<TDocument> ApplyCodeFixesForSpecificDiagnosticIdAsync<TDocument>(TDocument document, TextSpan textSpan, string diagnosticId, DiagnosticSeverity severity, IProgress<CodeAnalysisProgress> progressTracker, CancellationToken cancellationToken)
+                    where TDocument : TextDocument;
         CodeFixProvider? GetSuppressionFixer(string language, IEnumerable<string> diagnosticIds);
     }
 
