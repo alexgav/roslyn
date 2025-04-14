@@ -8,7 +8,9 @@ using System.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CodeCleanup;
 using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CodeRefactorings;
 using Microsoft.CodeAnalysis.Copilot;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -18,7 +20,9 @@ using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Internal.Log;
 using Microsoft.CodeAnalysis.Shared.Extensions;
+using Microsoft.CodeAnalysis.Shared.Utilities;
 using Microsoft.CodeAnalysis.Simplification;
+using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
 using static Microsoft.CodeAnalysis.CodeActions.CodeAction;
 
@@ -121,7 +125,18 @@ internal sealed class CSharpImplementNotImplementedExceptionFixProvider() : Synt
                 replacement = AddErrorComment(methodOrProperty, implementationDetails.Message);
             }
 
-            editor.ReplaceNode(methodOrProperty, replacement);
+            // TOOD: Cleanup 
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false)!;
+            var modifiedDocument = document.ReplaceNode(root!, node, replacement);
+            var modifiedSpan = new TextSpan(node.SpanStart, replacement.Span.Length);
+            var codeCleanupService = document.GetLanguageService<ICodeCleanupService>();
+            var cleanDocument = await codeCleanupService!.CleanupAsync(modifiedDocument, modifiedSpan, codeCleanupService.GetAllDiagnostics(), new NoOpProgressTracker(), cancellationToken).ConfigureAwait(false);
+            var relevantNodes = await cleanDocument.GetRelevantNodesAsync<MemberDeclarationSyntax>(modifiedSpan, cancellationToken).ConfigureAwait(false);
+            var relevantNode = relevantNodes.FirstOrDefault();
+            editor.ReplaceNode(methodOrProperty, relevantNode!);
+
+            // ORIGINAL CODE;
+            // editor.ReplaceNode(methodOrProperty, replacement);
         }
 
         editor.ReplaceNode(editor.OriginalRoot, editor.GetChangedRoot());
@@ -148,5 +163,13 @@ internal sealed class CSharpImplementNotImplementedExceptionFixProvider() : Synt
         return member
             .WithLeadingTrivia(newLeadingTrivia)
             .WithAdditionalAnnotations(Formatter.Annotation, WarningAnnotation, Simplifier.Annotation);
+    }
+}
+
+internal class NoOpProgressTracker : IProgress<CodeAnalysisProgress>
+{
+    public void Report(CodeAnalysisProgress value)
+    {
+        // No operation performed
     }
 }
